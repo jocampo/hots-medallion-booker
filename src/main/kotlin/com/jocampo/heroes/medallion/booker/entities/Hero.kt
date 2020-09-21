@@ -1,8 +1,6 @@
 package com.jocampo.heroes.medallion.booker.entities
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import java.net.URL
-
 
 /*
  * TODO: https://kotlinlang.org/docs/reference/kotlin-doc.html
@@ -13,5 +11,5 @@ data class Hero (
         val short_name: String,
         val role: String,
         val type: String,
-        val icon_url: URL
+        val icon_url: String
 )

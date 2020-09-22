@@ -10,6 +10,6 @@ data class Hero (
         val name: String,
         val short_name: String,
         val role: String,
-        val type: String,
-        val icon_url: String
+        val type: String
+        //val icon_url: String
 )

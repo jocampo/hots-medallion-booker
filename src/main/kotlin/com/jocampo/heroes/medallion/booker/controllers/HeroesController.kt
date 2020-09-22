@@ -13,7 +13,6 @@ class HeroesController(
 
     @GetMapping("/heroes")
     fun getAll(): List<Hero> {
-        hotSAPIClient.fetchAllHeroes()
-        return listOf<Hero>(Hero("a", "a", "a", "a", "asd"))
+        return hotSAPIClient.fetchAllHeroes()
     }
 }

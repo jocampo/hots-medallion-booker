@@ -31,7 +31,6 @@ dependencies {
 	implementation("io.github.rybalkinsd:kohttp:+")
 	implementation("io.github.rybalkinsd:kohttp-jackson:+")
 	implementation("com.fasterxml.jackson.core:jackson-databind")
-	implementation("io.github.microutils:kotlin-logging:1.7.8")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("org.postgresql:postgresql")

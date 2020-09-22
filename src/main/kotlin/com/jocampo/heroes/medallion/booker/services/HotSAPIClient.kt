@@ -4,19 +4,19 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.jocampo.heroes.medallion.booker.entities.Hero
 import io.github.rybalkinsd.kohttp.ext.httpGet
 import io.github.rybalkinsd.kohttp.jackson.ext.toType
-import mu.KotlinLogging
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-
-private val logger = KotlinLogging.logger {}
 
 @Service
 class HotSAPIClient(
         private val objectMapper: ObjectMapper
 ) {
     private val HOTS_API_URL_BASE = "https://hotsapi.net/api/v1"
+    private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
 
     fun fetchAllHeroes(): List<Hero> {
-        logger.debug { "Processing request to fetch heroes from the HotS API" }
+        logger.debug("Processing request to fetch all heroes")
         "$HOTS_API_URL_BASE/${HotSAPIMethods.HEROES.path}"
                 .httpGet()
                 .use {

@@ -1,20 +1,21 @@
 package com.jocampo.heroes.medallion.booker.config
 
 import com.jocampo.heroes.medallion.booker.services.WebSocketRPCService
-import mu.KotlinLogging
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.socket.config.annotation.EnableWebSocket
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 
-private val logger = KotlinLogging.logger {}
-
 @Configuration
 @EnableWebSocket
 class WebSocketConfig : WebSocketConfigurer {
+    private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
+
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
         val wsPath = "/rooms"
-        logger.info { "Registering ws handler for $wsPath" }
+        logger.info("Registering ws handler for $wsPath")
         registry.addHandler(WebSocketRPCService(), wsPath).withSockJS()
     }
 }

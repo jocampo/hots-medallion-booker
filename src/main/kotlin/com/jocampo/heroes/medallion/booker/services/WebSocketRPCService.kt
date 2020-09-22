@@ -11,7 +11,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.util.concurrent.atomic.AtomicLong
 
 class WebSocketRPCService : TextWebSocketHandler() {
-    private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
+    private val logger: Logger = LoggerFactory.getLogger(WebSocketRPCService::class.java)
 
     val sessionList = HashMap<WebSocketSession, User>()
     var uids = AtomicLong(0)

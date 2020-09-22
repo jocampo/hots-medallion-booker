@@ -13,7 +13,7 @@ class HotSAPIClient(
         private val objectMapper: ObjectMapper
 ) {
     private val HOTS_API_URL_BASE = "https://hotsapi.net/api/v1"
-    private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
+    private val logger: Logger = LoggerFactory.getLogger(HotSAPIClient::class.java)
 
     fun fetchAllHeroes(): List<Hero> {
         logger.debug("Processing request to fetch all heroes")

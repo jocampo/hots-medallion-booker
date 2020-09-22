@@ -11,7 +11,7 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @Configuration
 @EnableWebSocket
 class WebSocketConfig : WebSocketConfigurer {
-    private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
+    private val logger: Logger = LoggerFactory.getLogger(WebSocketConfig::class.java)
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
         val wsPath = "/rooms"

@@ -10,10 +10,13 @@ import org.springframework.web.socket.*
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.util.concurrent.atomic.AtomicLong
 
-class WebSocketRPCService : TextWebSocketHandler() {
-    private val logger: Logger = LoggerFactory.getLogger(WebSocketRPCService::class.java)
 
-    val sessionList = HashMap<WebSocketSession, User>()
+class WebSocketRPCService(
+        private val objectMapper: ObjectMapper
+) : TextWebSocketHandler() {
+
+    private val logger: Logger = LoggerFactory.getLogger(WebSocketRPCService::class.java)
+    private val sessionList = HashMap<WebSocketSession, User>()
     var uids = AtomicLong(0)
 
     @Throws(Exception::class)
@@ -23,7 +26,7 @@ class WebSocketRPCService : TextWebSocketHandler() {
     }
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
-        val json = ObjectMapper().readTree(message.payload)
+        val json = objectMapper.readTree(message.payload)
         when (json.get("type").asText()) {
             "joinRoom" -> {
                 // TODO: Introduce concept of rooms
@@ -51,7 +54,7 @@ class WebSocketRPCService : TextWebSocketHandler() {
     }
 
     fun emit(session: WebSocketSession, msg: Message) =
-            session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(msg)))
+            session.sendMessage(TextMessage(objectMapper.writeValueAsString(msg)))
 
     fun broadcast(msg: Message) =
             sessionList.forEach { emit(it.key, msg) }

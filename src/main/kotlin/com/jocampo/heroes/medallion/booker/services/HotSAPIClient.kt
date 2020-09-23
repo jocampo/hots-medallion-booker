@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service
 class HotSAPIClient(
         private val objectMapper: ObjectMapper
 ) {
-    private val HOTS_API_URL_BASE = "https://hotsapi.net/api/v1"
+    private final val HOTS_API_URL_BASE = "https://hotsapi.net/api/v1"
     private val logger: Logger = LoggerFactory.getLogger(HotSAPIClient::class.java)
 
     fun fetchAllHeroes(): List<Hero> {

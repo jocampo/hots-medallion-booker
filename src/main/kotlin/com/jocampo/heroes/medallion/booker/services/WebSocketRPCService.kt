@@ -12,7 +12,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 
 class WebSocketRPCService(
-        private val objectMapper: ObjectMapper
+        private val objectMapper: ObjectMapper,
+        private val roomKeeperService: RoomKeeperService
 ) : TextWebSocketHandler() {
 
     private val logger: Logger = LoggerFactory.getLogger(WebSocketRPCService::class.java)

@@ -21,11 +21,14 @@ class RoomKeeperService(
 
     /**
      * Handles randomized creation of room codes with the following shape
-     * <adjectiveNoun###>. ie: pretentiousTadpole215
+     * <adjectiveNoun###>. ie: PretentiousTadpole215
      *
      * @return new room code
      */
-    fun generateRoomCode(): String = adjectives.random() + nouns.random() + Random.nextInt(highestRoomNumber)
+    fun generateRoomCode(): String =
+            adjectives.random().capitalize() +
+            nouns.random().capitalize() +
+            Random.nextInt(highestRoomNumber).toString()
 
     /**
      * Adds a room code to the reserved rooms collection.

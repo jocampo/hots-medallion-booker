@@ -63,3 +63,7 @@ class WebSocketRPCService(
     fun broadcastToOthers(me: WebSocketSession, msg: Message) =
             sessionList.filterNot { it.key == me }.forEach { emit(it.key, msg) }
 }
+
+enum class WebSocketEventTypes(val eventType: String) {
+    JOIN_ROOM("joinRoom")
+}

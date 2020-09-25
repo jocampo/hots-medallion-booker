@@ -2,6 +2,8 @@ package com.jocampo.heroes.medallion.booker.services
 
 import com.jocampo.heroes.medallion.booker.entities.Room
 import com.jocampo.heroes.medallion.booker.entities.User
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.Resource
 import org.springframework.stereotype.Component
@@ -17,10 +19,14 @@ class RoomKeeperService(
 ) {
     private final val highestRoomNumber: Int = 9999
     private final val maxAttempts: Int = 250
+    private final val maxUsersPerRoom: Int = 5
 
     private var adjectives: List<String> = Files.readAllLines(Paths.get(adjectivesFile.file.path))
     private var nouns: List<String> = Files.readAllLines(Paths.get(nounsFile.file.path))
     private val rooms = ConcurrentHashMap<String, Room>()
+    private val logger: Logger = LoggerFactory.getLogger(RoomKeeperService::class.java)
+
+    fun getRooms(): ConcurrentHashMap<String, Room> = rooms
 
     /**
      * Handles randomized creation of room codes with the following shape
@@ -40,7 +46,7 @@ class RoomKeeperService(
      *
      * @return the newly booked room code
      */
-    fun bookRoom(user: User): String {
+    fun bookRandomRoom(user: User): String {
         var attempts = 0
         while (true) {
             if (attempts > maxAttempts) {
@@ -100,5 +106,33 @@ class RoomKeeperService(
             room.ownerId = room.users.random().id
             room.ownerId
         }
+    }
+
+    /**
+     * A user joins an existing room they're not currently in
+     *
+     * @throws Exception: - When the room code doesn't exist.
+     * - When the user already belongs to the room.
+     *
+     * @return Boolean: True if they were able to join the room, False otherwise
+     * A cap of 5 users per room is maintained.
+     */
+    fun joinExistingRoom(code: String, user: User): Boolean {
+        if (!rooms.containsKey(code)) {
+            throw Exception("Attempted to leave a room that doesn't exist...")
+        }
+        // The room EXISTS
+        val room = rooms[code]!!
+
+        if (room.users.map { it.id }.contains(user.id)) {
+            throw Exception("Attempted to leave a room the user doesn't belong to...")
+        }
+
+        if (room.users.size == maxUsersPerRoom) {
+            logger.info("Room with code $code is full. User ${user.id} was denied entrance")
+            return false
+        }
+        room.users.add(user)
+        return true
     }
 }

@@ -125,7 +125,7 @@ class RoomKeeperService(
         val room = rooms[code]!!
 
         if (room.users.map { it.id }.contains(user.id)) {
-            throw Exception("Attempted to leave a room the user doesn't belong to...")
+            throw Exception("Attempted to join a room the user is already in...")
         }
 
         if (room.users.size == maxUsersPerRoom) {

@@ -1,7 +1,6 @@
 package com.jocampo.heroes.medallion.booker.services
 
-import com.jocampo.heroes.medallion.booker.entities.Room
-import com.jocampo.heroes.medallion.booker.entities.User
+import com.jocampo.heroes.medallion.booker.entities.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -55,7 +54,7 @@ class RoomKeeperService(
 
             val code = generateRoomCode()
             if (!rooms.containsKey(code)) {
-                rooms[code] = Room(code, mutableListOf(user), user.id)
+                rooms[code] = Room(code, mutableListOf(user), user.id, arrayListOf(), arrayListOf())
                 return code
             }
             attempts++
@@ -140,5 +139,57 @@ class RoomKeeperService(
         }
         room.users.add(user)
         return true
+    }
+
+    /**
+     * Utility method to grab the right team hero collection (blue/red) from a room
+     * @param room: room with the hero collections on each team
+     * @param team: com.jocampo.heroes.medallion.booker.entities.Teams enum value
+     *
+     * @return the MutableList pointing towards the right collection
+     */
+    private fun getHeroCollectionPerSide(room: Room, team: String): MutableList<Hero> {
+        return when (team) {
+            Teams.BLUE.side -> {
+                room.blueTeam
+            }
+            else -> {
+                room.redTeam
+            }
+        }
+    }
+
+    fun addHeroToRoom(code: String, hero: Hero, team: String) {
+        if (!rooms.containsKey(code)) {
+            throw RKSException(RKSErrorCodes.ROOM_DOES_NOT_EXIST.code, "The room $code doesn't exist")
+        }
+        // Point towards the right team so as to prevent code duplication
+        val teamCollection = getHeroCollectionPerSide(rooms[code]!!, team)
+
+        if (teamCollection.size == Room.MAX_HEROES_PER_TEAM) {
+            throw RKSException(RKSErrorCodes.TEAM_IS_FULL.code,
+                    "That team already has ${Room.MAX_HEROES_PER_TEAM} heroes and is full")
+        }
+        if (teamCollection.any { it.name == hero.name }) {
+            throw RKSException(RKSErrorCodes.HERO_ALREADY_IN_TEAM.code,
+                    "That team already has ${hero.name} in it.")
+        }
+
+        teamCollection.add(hero)
+    }
+
+    fun removeHeroFromRoom(code: String, hero: Hero, team: String) {
+        if (!rooms.containsKey(code)) {
+            throw RKSException(RKSErrorCodes.ROOM_DOES_NOT_EXIST.code, "The room $code doesn't exist")
+        }
+        // Point towards the right team so as to prevent code duplication
+        val teamCollection = getHeroCollectionPerSide(rooms[code]!!, team)
+
+        if (teamCollection.none { it.name == hero.name }) {
+            throw RKSException(RKSErrorCodes.HERO_NOT_IN_TEAM.code,
+                    "That team doesn't have ${hero.name} in it.")
+        }
+
+        teamCollection.remove(hero)
     }
 }

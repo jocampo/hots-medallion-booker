@@ -30,35 +30,9 @@ class WebSocketRPCService(
     @Throws(Exception::class)
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         logger.info("Closing connection with $session.id, looking for rooms to clean-up")
-        val user = sessionList[session]!!
         // If user is breaking the session WITHOUT first leaving the room, we need to force him
-        // out of it and notify the remaining users (if any). And also potentially notify the change
-        // of ownership. Since the user ALREADY closed the connection, there's no need to notify him.
-        roomKeeperService.getRooms().values.find { it.users.any { u -> u.id == user.id } }?.let {
-            // TODO: roomKeeperService.vacateRoom mutates and potentially removes the room from the collection
-            // is this loop still safe?
-            when (roomKeeperService.vacateRoom(it.code, user)) {
-                null -> {
-                    // The room was deleted... do nothing?
-                    logger.info("Upon $user closing connection without leaving the room, the room" +
-                            "$it has been released...")
-                }
-                -1L -> {
-                    // Ownership wasn't handed off. Notify remaining users of who left
-                    broadcastToRoom(
-                            it,
-                            Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UserLeftRoomRequest(user, it))
-                    )
-                }
-                else -> {
-                    // Ownership change happened
-                    broadcastToRoom(
-                            it,
-                            Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UserLeftRoomRequest(user, it))
-                    )
-                }
-            }
-        }
+        // out of it.
+        handleUserLeavingRoom(session, true)
         sessionList -= session
     }
 
@@ -110,11 +84,15 @@ class WebSocketRPCService(
                             Message(WebSocketEventTypes.USER_JOINED_ROOM.eventType, UserJoinedRoomRequest(user, room))
                     )
                 }
-                "leaveRoom" -> {
-                    logger.info("User left room! $session.id")
-                    val user = sessionList[session] ?: throw Exception("Caller is expected to have a valid session")
-
-                    broadcastToOthers(session, Message("leaveRoom", user))
+                WebSocketEventTypes.LEAVE_ROOM.eventType -> {
+                    if (!sessionList.containsKey(session)) {
+                        logger.error("User doesn't have an existing session, which is required by this event type")
+                        emitGenericError(session)
+                        return
+                    }
+                    handleUserLeavingRoom(session, false)
+                    // In the future, we might not want to tie leaving a room with having your session removed
+                    sessionList -= session
                 }
                 "addHero" -> {
 
@@ -138,14 +116,48 @@ class WebSocketRPCService(
     private fun emit(session: WebSocketSession, msg: Message) =
             session.sendMessage(TextMessage(objectMapper.writeValueAsString(msg)))
 
+    private fun broadcastToRoom(room: Room, msg: Message) =
+            room.users.forEach { emit(sessionList.filterValues { u -> u.id == it.id }.keys.first(), msg) }
+
+    /**
+     * Forces the user to leave the room and notifies the remaining users (if any). And also potentially notifies the
+     * change of ownership through the same event. Since the user ALREADY closed the connection, there's no need to notify him.
+     *
+     * @param session: existing session
+     * @param isConnectionClosed: if true, it means that the user leaving the room has already closed the connection
+     * Otherwise, the session is still valid and we need to notify the user that he has successfully left the room.
+     */
+    private fun handleUserLeavingRoom(session: WebSocketSession, isConnectionClosed: Boolean) {
+        val user = sessionList[session]!!
+        roomKeeperService.getRooms().values.find { it.users.any { u -> u.id == user.id } }?.let {
+            when (roomKeeperService.vacateRoom(it.code, user)) {
+                null -> {
+                    // The room was deleted... do nothing, since we don't need to notify anyone
+                    logger.info("Upon $user closing connection without leaving the room, the room" +
+                            "$it has been released...")
+                }
+                else -> {
+                    // 2 scenarios, the iterator has already changed, so the call is the same:
+                    // Ownership wasn't handed off. Notify remaining users of who left
+                    // Ownership change happened
+                    broadcastToRoom(
+                            it,
+                            Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UserLeftRoomRequest(user, it))
+                    )
+                    // Notify the user only if he hasn't left yet (closed the websocket connection)
+                    if (!isConnectionClosed) {
+                        emit(session, Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UserLeftRoomRequest(user, it)))
+                    }
+                }
+            }
+        }
+    }
+
     private fun broadcast(msg: Message) =
             sessionList.forEach { emit(it.key, msg) }
 
     private fun broadcastToOthers(me: WebSocketSession, msg: Message) =
             sessionList.filterNot { it.key == me }.forEach { emit(it.key, msg) }
-
-    private fun broadcastToRoom(room: Room, msg: Message) =
-            room.users.forEach { emit(sessionList.filterValues { u -> u.id == it.id }.keys.first(), msg) }
 }
 
 enum class WebSocketEventTypes(val eventType: String) {

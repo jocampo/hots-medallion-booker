@@ -95,7 +95,7 @@ class RoomKeeperService(
             throw Exception("Attempted to leave a room the user doesn't belong to...")
         }
 
-        // The user belongs to the user
+        // The user belongs to the room
         room.users.removeIf { it.id == user.id }
         return if (room.users.isEmpty()) {
             // Free up the room, as it's empty now
@@ -103,8 +103,14 @@ class RoomKeeperService(
             null
         } else {
             // Room isn't empty. Give ownership to another user in the room
-            room.ownerId = room.users.random().id
-            room.ownerId
+            // but only if the user that's leaving was the owner
+            if (room.ownerId == user.id) {
+                room.ownerId = room.users.random().id
+                room.ownerId
+            } else {
+                // No ownership change
+                -1L
+            }
         }
     }
 

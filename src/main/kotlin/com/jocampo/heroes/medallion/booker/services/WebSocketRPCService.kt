@@ -20,6 +20,7 @@ class WebSocketRPCService(
     private val logger: Logger = LoggerFactory.getLogger(WebSocketRPCService::class.java)
     private val sessionList = HashMap<WebSocketSession, User>()
 
+    // Probably want to use actual UUIDS in the future
     var uids = AtomicLong(1)
 
     @Throws(Exception::class)
@@ -160,11 +161,18 @@ class WebSocketRPCService(
             sessionList.filterNot { it.key == me }.forEach { emit(it.key, msg) }
 }
 
+// Can we eventually unite request types with event types? 🤔
 enum class WebSocketEventTypes(val eventType: String) {
     BOOK_ROOM("bookRoom"),
     JOIN_ROOM("joinRoom"),
     LEAVE_ROOM("leaveRoom"),
     USER_JOINED_ROOM("userJoinedRoom"),
     USER_LEFT_ROOM("userLeftRoom"),
-    ERROR_OCCURRED("errorOccurred")
+    ERROR_OCCURRED("errorOccurred"),
+    ADD_HERO("addHero"),
+    REMOVE_HERO("removeHero"),
+    HERO_ADDED("heroAdded"),
+    HERO_REMOVED("heroRemoved"),
+    MEDALLION_USED("medallionUsed"),
+    MEDALLION_OFF_CD("medallionOffCD")
 }

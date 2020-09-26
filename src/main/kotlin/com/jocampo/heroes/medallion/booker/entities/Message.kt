@@ -8,6 +8,8 @@ data class Message(val msgType: String, val data: Any) {
 }
 
 // Request types for WebSocket events
+// Some of these requests are more like responses, but at the same time they are a request from one
+// of the sides (client vs server) in the websocket communication, so we're just going to leave them like this for now
 data class BookRoomRequest(val userName: String) {
     init {
         require(userName.isNotBlank()) { "Field userName name can't be blank" }

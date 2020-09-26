@@ -25,9 +25,4 @@ data class LeaveRoomRequest(val roomCode: String, val user: User) {
     }
 }
 data class UserJoinedRoomRequest(val user: User, val room: Room)
-data class UserLeftRoomRequest(val roomCode: String, val userName: String) {
-    init {
-        require(roomCode.isNotBlank()) { "Field userName name can't be blank" }
-        require(userName.isNotBlank()) { "Field userName name can't be blank" }
-    }
-}
+data class UserLeftRoomRequest(val user: User, val room: Room)

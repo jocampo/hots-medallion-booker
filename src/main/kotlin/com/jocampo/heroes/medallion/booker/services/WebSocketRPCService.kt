@@ -31,14 +31,33 @@ class WebSocketRPCService(
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         logger.info("Closing connection with $session.id, looking for rooms to clean-up")
         val user = sessionList[session]!!
+        // If user is breaking the session WITHOUT first leaving the room, we need to force him
+        // out of it and notify the remaining users (if any). And also potentially notify the change
+        // of ownership. Since the user ALREADY closed the connection, there's no need to notify him.
         roomKeeperService.getRooms().values.find { it.users.any { u -> u.id == user.id } }?.let {
-            val result = roomKeeperService.vacateRoom(it.code, user)
-            // Handle room change results and notify
-            /**
-             * TODO
-             * user left -> notify and broadcast all other remaining room users that userLeft
-             * user left and RIP room -> notify only that user? be careful of room dying
-             */
+            // TODO: roomKeeperService.vacateRoom mutates and potentially removes the room from the collection
+            // is this loop still safe?
+            when (roomKeeperService.vacateRoom(it.code, user)) {
+                null -> {
+                    // The room was deleted... do nothing?
+                    logger.info("Upon $user closing connection without leaving the room, the room" +
+                            "$it has been released...")
+                }
+                -1L -> {
+                    // Ownership wasn't handed off. Notify remaining users of who left
+                    broadcastToRoom(
+                            it,
+                            Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UserLeftRoomRequest(user, it))
+                    )
+                }
+                else -> {
+                    // Ownership change happened
+                    broadcastToRoom(
+                            it,
+                            Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UserLeftRoomRequest(user, it))
+                    )
+                }
+            }
         }
         sessionList -= session
     }

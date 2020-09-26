@@ -20,7 +20,7 @@ class WebSocketRPCService(
     private val logger: Logger = LoggerFactory.getLogger(WebSocketRPCService::class.java)
     private val sessionList = HashMap<WebSocketSession, User>()
 
-    var uids = AtomicLong(0)
+    var uids = AtomicLong(1)
 
     @Throws(Exception::class)
     override fun afterConnectionEstablished(session: WebSocketSession) {
@@ -29,7 +29,17 @@ class WebSocketRPCService(
 
     @Throws(Exception::class)
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-        logger.info("Closing connection with $session.id")
+        logger.info("Closing connection with $session.id, looking for rooms to clean-up")
+        val user = sessionList[session]!!
+        roomKeeperService.getRooms().values.find { it.users.any { u -> u.id == user.id } }?.let {
+            val result = roomKeeperService.vacateRoom(it.code, user)
+            // Handle room change results and notify
+            /**
+             * TODO
+             * user left -> notify and broadcast all other remaining room users that userLeft
+             * user left and RIP room -> notify only that user? be careful of room dying
+             */
+        }
         sessionList -= session
     }
 

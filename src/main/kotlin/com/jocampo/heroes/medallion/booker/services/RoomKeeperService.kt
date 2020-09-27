@@ -223,6 +223,6 @@ class RoomKeeperService(
             logger.error("Medallion with identifier $medallionIdentifier doesn't exist and was attempted to be removed")
             throw RKSException(RKSErrorCodes.MEDALLION_NOT_ON_CD.code, "That hero's medallion is not CD")
         }
-        ongoingTimers - medallionIdentifier
+        ongoingTimers -= medallionIdentifier
     }
 }

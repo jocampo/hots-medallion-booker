@@ -24,6 +24,7 @@ class RoomKeeperService(
     private var nouns: List<String> = Files.readAllLines(Paths.get(nounsFile.file.path))
     private val rooms = ConcurrentHashMap<String, Room>()
     private val logger: Logger = LoggerFactory.getLogger(RoomKeeperService::class.java)
+    private val ongoingTimers: HashSet<String> = hashSetOf()
 
     fun getRooms(): ConcurrentHashMap<String, Room> = rooms
 
@@ -193,5 +194,35 @@ class RoomKeeperService(
         }
 
         teamCollection.remove(hero)
+    }
+
+    /**
+     * Validates the roomCode and gets the matching Room
+     */
+    fun getRoomSafe(roomCode: String): Room {
+        if (!rooms.containsKey(roomCode)) {
+            throw RKSException(RKSErrorCodes.ROOM_DOES_NOT_EXIST.code, "The room $roomCode doesn't exist")
+        }
+        return rooms[roomCode]!!
+    }
+
+    fun calculateMedallionCode(roomCode: String, hero: Hero, team: String) = "$roomCode/${hero.name}/$team"
+
+    fun checkOngoingMedallions(identifier: String) = ongoingTimers.contains(identifier)
+
+    fun registerMedallionTimer(medallionIdentifier: String) {
+        if (ongoingTimers.contains(medallionIdentifier)) {
+            logger.error("Medallion with identifier $medallionIdentifier is already on CD")
+            throw RKSException(RKSErrorCodes.MEDALLION_ALREADY_ON_CD.code, "That hero's medallion is already on CD")
+        }
+        ongoingTimers.add(medallionIdentifier)
+    }
+
+    fun clearMedallionTimer(medallionIdentifier: String) {
+        if (!ongoingTimers.contains(medallionIdentifier)) {
+            logger.error("Medallion with identifier $medallionIdentifier doesn't exist and was attempted to be removed")
+            throw RKSException(RKSErrorCodes.MEDALLION_NOT_ON_CD.code, "That hero's medallion is not CD")
+        }
+        ongoingTimers - medallionIdentifier
     }
 }

@@ -12,7 +12,6 @@ import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.collections.HashMap
-import kotlin.concurrent.schedule
 import kotlin.concurrent.timerTask
 
 
@@ -63,7 +62,7 @@ class WebSocketRPCService(
                     val room = roomKeeperService.getRooms()[roomCode]!!
                     emit(session, Message(
                             WebSocketEventTypes.USER_JOINED_ROOM.eventType,
-                            UserJoinedRoomRequest(user, room)
+                            UsersChangedRoomResponse(user, room)
                     ))
                 }
                 WebSocketEventTypes.JOIN_ROOM.eventType -> {
@@ -84,10 +83,10 @@ class WebSocketRPCService(
                     }
                     sessionList[session] = user
                     // The user just joined the room, it must exist
-                    val room = roomKeeperService.getRooms()[request.roomCode]!!
+                    val room = roomKeeperService.getRoomSafe(request.roomCode)
                     broadcastToRoom(
                             room,
-                            Message(WebSocketEventTypes.USER_JOINED_ROOM.eventType, UserJoinedRoomRequest(user, room))
+                            Message(WebSocketEventTypes.USER_JOINED_ROOM.eventType, UsersChangedRoomResponse(user, room))
                     )
                 }
                 WebSocketEventTypes.LEAVE_ROOM.eventType -> {
@@ -109,7 +108,7 @@ class WebSocketRPCService(
                     val request = objectMapper.readValue<GenericHeroRequest>(json.get("data").toString())
                     roomKeeperService.addHeroToRoom(request.roomCode, request.hero, request.team)
                     broadcastToRoom(
-                            roomKeeperService.getRooms()[request.roomCode]!!,
+                            roomKeeperService.getRoomSafe(request.roomCode),
                             Message(
                                     WebSocketEventTypes.HERO_ADDED.eventType,
                                     GenericHeroRequest(
@@ -131,7 +130,7 @@ class WebSocketRPCService(
                     val request = objectMapper.readValue<GenericHeroRequest>(json.get("data").toString())
                     roomKeeperService.removeHeroFromRoom(request.roomCode, request.hero, request.team)
                     broadcastToRoom(
-                            roomKeeperService.getRooms()[request.roomCode]!!,
+                            roomKeeperService.getRoomSafe(request.roomCode),
                             Message(
                                     WebSocketEventTypes.HERO_REMOVED.eventType,
                                     // TODO: This needs to be reworked eventually, this is structured weirdly
@@ -261,11 +260,11 @@ class WebSocketRPCService(
                     // Ownership change happened
                     broadcastToRoom(
                             it,
-                            Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UserLeftRoomRequest(user, it))
+                            Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UsersChangedRoomResponse(user, it))
                     )
                     // Notify the user only if he hasn't left yet (closed the websocket connection)
                     if (!isConnectionClosed) {
-                        emit(session, Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UserLeftRoomRequest(user, it)))
+                        emit(session, Message(WebSocketEventTypes.USER_LEFT_ROOM.eventType, UsersChangedRoomResponse(user, it)))
                     }
                 }
             }

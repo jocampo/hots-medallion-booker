@@ -22,7 +22,9 @@ data class JoinRoomRequest(val roomCode: String, val userName: String) {
 data class GenericHeroRequest(val user: User, val roomCode: String, val hero: Hero, val team: String) {
     init {
         require(roomCode.isNotBlank()) { "Field roomCode name can't be blank" }
-        require(team.isNotBlank()) { "Field team name can't be blank" }
+        require(Teams.values().any { it.side == team }) {
+            "Field team must have a valid value (${Teams.values().map { it.side }.joinToString()})"
+        }
     }
 }
 

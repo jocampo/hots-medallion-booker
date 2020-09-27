@@ -23,3 +23,6 @@ data class JoinRoomRequest(val roomCode: String, val userName: String) {
 }
 data class UserJoinedRoomRequest(val user: User, val room: Room)
 data class UserLeftRoomRequest(val user: User, val room: Room)
+data class GenericHeroRequest(val user: User, val roomCode: String, val hero: Hero, val team: String)
+
+data class ErrorResponse(val code: String?, val message: String?)

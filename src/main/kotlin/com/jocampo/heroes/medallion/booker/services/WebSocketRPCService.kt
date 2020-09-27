@@ -9,7 +9,11 @@ import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
+import java.util.*
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.collections.HashMap
+import kotlin.concurrent.schedule
+import kotlin.concurrent.timerTask
 
 
 class WebSocketRPCService(
@@ -19,6 +23,7 @@ class WebSocketRPCService(
 
     private val logger: Logger = LoggerFactory.getLogger(WebSocketRPCService::class.java)
     private val sessionList = HashMap<WebSocketSession, User>()
+    private val MEDALLION_CD_MILLIS: Long = 30L * 1000 // 300 seconds in millis
 
     // Probably want to use actual UUIDS in the future
     var uids = AtomicLong(1)
@@ -95,30 +100,143 @@ class WebSocketRPCService(
                     // In the future, we might not want to tie leaving a room with having your session removed
                     sessionList -= session
                 }
-                "addHero" -> {
+                WebSocketEventTypes.ADD_HERO.eventType -> {
+                    if (!sessionList.containsKey(session)) {
+                        logger.error("User doesn't have an existing session, which is required by this event type")
+                        emitGenericError(session)
+                        return
+                    }
+                    val request = objectMapper.readValue<GenericHeroRequest>(json.get("data").toString())
+                    roomKeeperService.addHeroToRoom(request.roomCode, request.hero, request.team)
+                    broadcastToRoom(
+                            roomKeeperService.getRooms()[request.roomCode]!!,
+                            Message(
+                                    WebSocketEventTypes.HERO_ADDED.eventType,
+                                    GenericHeroRequest(
+                                            request.user,
+                                            request.roomCode,
+                                            request.hero,
+                                            request.team
+                                    )
+                            )
+                    )
 
                 }
-                "listAllHeroes" -> {
-
+                WebSocketEventTypes.REMOVE_HERO.eventType -> {
+                    if (!sessionList.containsKey(session)) {
+                        logger.error("User doesn't have an existing session, which is required by this event type")
+                        emitGenericError(session)
+                        return
+                    }
+                    val request = objectMapper.readValue<GenericHeroRequest>(json.get("data").toString())
+                    roomKeeperService.removeHeroFromRoom(request.roomCode, request.hero, request.team)
+                    broadcastToRoom(
+                            roomKeeperService.getRooms()[request.roomCode]!!,
+                            Message(
+                                    WebSocketEventTypes.HERO_REMOVED.eventType,
+                                    // TODO: This needs to be reworked eventually, this is structured weirdly
+                                    // and there's a lot of redundant data
+                                    GenericHeroRequest(
+                                            request.user,
+                                            request.roomCode,
+                                            request.hero,
+                                            request.team
+                                    )
+                            )
+                    )
+                }
+                WebSocketEventTypes.MEDALLION_USED.eventType -> {
+                    if (!sessionList.containsKey(session)) {
+                        logger.error("User doesn't have an existing session, which is required by this event type")
+                        emitGenericError(session)
+                        return
+                    }
+                    val request = objectMapper.readValue<GenericHeroRequest>(json.get("data").toString())
+                    val room = roomKeeperService.getRoomSafe(request.roomCode)
+                    val medallionIdentifier = roomKeeperService.calculateMedallionCode(
+                            room.code,
+                            request.hero,
+                            request.team
+                    )
+                    roomKeeperService.registerMedallionTimer(medallionIdentifier)
+                    Timer().schedule(timerTask {
+                        roomKeeperService.clearMedallionTimer(medallionIdentifier)
+                        broadcastToRoom(room, Message(
+                                WebSocketEventTypes.MEDALLION_OFF_CD.eventType,
+                                GenericHeroRequest(
+                                        request.user,
+                                        room.code,
+                                        request.hero,
+                                        request.team
+                                )
+                        ))
+                    }, MEDALLION_CD_MILLIS)
+                    // For now, we notify the OTHER users in the room as to which medallion was just used.
+                    broadcastToOthersInRoom(request.user, room, Message(
+                            WebSocketEventTypes.MEDALLION_USED.eventType,
+                            // TODO: This needs to be reworked eventually, this is structured weirdly
+                            // and there's a lot of redundant data
+                            GenericHeroRequest(
+                                    request.user,
+                                    request.roomCode,
+                                    request.hero,
+                                    request.team
+                            )
+                    ))
+                }
+                WebSocketEventTypes.CANCEL_MEDALLION.eventType -> {
+                    if (!sessionList.containsKey(session)) {
+                        logger.error("User doesn't have an existing session, which is required by this event type")
+                        emitGenericError(session)
+                        return
+                    }
+                    val request = objectMapper.readValue<GenericHeroRequest>(json.get("data").toString())
+                    val room = roomKeeperService.getRoomSafe(request.roomCode)
+                    val medallionIdentifier = roomKeeperService.calculateMedallionCode(
+                            room.code,
+                            request.hero,
+                            request.team
+                    )
+                    roomKeeperService.clearMedallionTimer(medallionIdentifier)
+                    broadcastToRoom(room, Message(
+                            WebSocketEventTypes.CANCEL_MEDALLION.eventType,
+                            GenericHeroRequest(
+                                    request.user,
+                                    room.code,
+                                    request.hero,
+                                    request.team
+                            )
+                    ))
                 }
             }
+        } catch (e: RKSException) {
+            logger.error("Found a RKS-related issue while processing request from user $session", e)
+            // Inform the user about the error that happened
+            emitRKSError(session, e)
         } catch (e: Exception) {
-            logger.error("Found an issue while processing request from user $session", e)
-            // Inform the user about the error
+            logger.error("Found an unhandled issue while processing request from user $session", e)
             emitGenericError(session)
-            // TODO: Should we inform the user about WHAT went wrong in a more actionable way?
         }
     }
 
     private fun emitGenericError(session: WebSocketSession) =
             emit(session, Message(WebSocketEventTypes.ERROR_OCCURRED.eventType,
-                    "Found an issue while processing your request, please try again."))
+                    ErrorResponse(null, "Found an issue while processing your request, please try again.")))
+
+    private fun emitRKSError(session: WebSocketSession, rksException: RKSException) =
+            emit(session, Message(WebSocketEventTypes.ERROR_OCCURRED.eventType,
+                    ErrorResponse(rksException.rks_error_code, rksException.error_message)))
 
     private fun emit(session: WebSocketSession, msg: Message) =
             session.sendMessage(TextMessage(objectMapper.writeValueAsString(msg)))
 
     private fun broadcastToRoom(room: Room, msg: Message) =
             room.users.forEach { emit(sessionList.filterValues { u -> u.id == it.id }.keys.first(), msg) }
+
+    private fun broadcastToOthersInRoom(user: User,room: Room, msg: Message) =
+            room.users.filterNot { it.id == user.id}.forEach {
+                emit(sessionList.filterValues { u -> u.id == it.id }.keys.first(), msg)
+            }
 
     /**
      * Forces the user to leave the room and notifies the remaining users (if any). And also potentially notifies the
@@ -174,5 +292,6 @@ enum class WebSocketEventTypes(val eventType: String) {
     HERO_ADDED("heroAdded"),
     HERO_REMOVED("heroRemoved"),
     MEDALLION_USED("medallionUsed"),
-    MEDALLION_OFF_CD("medallionOffCD")
+    MEDALLION_OFF_CD("medallionOffCD"),
+    CANCEL_MEDALLION("cancelMedallion")
 }

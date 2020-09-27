@@ -10,5 +10,7 @@ enum class RKSErrorCodes(val code: String) {
     USER_NOT_IN_ROOM("0103"),
     TEAM_IS_FULL("0104"),
     HERO_ALREADY_IN_TEAM("0105"),
-    HERO_NOT_IN_TEAM("0106")
+    HERO_NOT_IN_TEAM("0106"),
+    MEDALLION_ALREADY_ON_CD("0107"),
+    MEDALLION_NOT_ON_CD("0108")
 }

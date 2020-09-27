@@ -68,7 +68,7 @@ class RoomKeeperService(
         if (rooms.containsKey(code)) {
             rooms.remove(code)
         } else {
-            throw Exception("Attempted to remove a room code that doesn't exist...")
+            throw RKSException(RKSErrorCodes.ROOM_DOES_NOT_EXIST.code, "The room $code doesn't exist")
         }
     }
 
@@ -76,7 +76,7 @@ class RoomKeeperService(
      * The user gives up the room. If it's empty afterwards, then {releaseRoom} is invoked
      * to release the resource. TODO: fix docstring to reflect functionality
      *
-     * @throws Exception: - When the room code doesn't exist.
+     * @throws RKSException: - When the room code doesn't exist.
      * - When the user doesn't belong to the room.
      *
      * @return Returns an {Int} ONLY if the room ownership has been given to another user in the room.
@@ -85,13 +85,14 @@ class RoomKeeperService(
     fun vacateRoom(code: String, user: User): Long? {
         // TODO: test if contains(user) works properly
         if (!rooms.containsKey(code)) {
-            throw Exception("Attempted to leave a room that doesn't exist...")
+            throw RKSException(RKSErrorCodes.ROOM_DOES_NOT_EXIST.code, "The room $code doesn't exist")
         }
         // The room EXISTS
         val room = rooms[code]!!
 
         if (!room.users.map { it.id }.contains(user.id)) {
-            throw Exception("Attempted to leave a room the user doesn't belong to...")
+            throw RKSException(RKSErrorCodes.USER_NOT_IN_ROOM.code, "Attempted to leave a room the user doesn't belong" +
+                    " to...")
         }
 
         // The user belongs to the room
@@ -116,7 +117,7 @@ class RoomKeeperService(
     /**
      * A user joins an existing room they're not currently in
      *
-     * @throws Exception: - When the room code doesn't exist.
+     * @throws RKSException: - When the room code doesn't exist.
      * - When the user already belongs to the room.
      *
      * @return Boolean: True if they were able to join the room, False otherwise
@@ -124,13 +125,14 @@ class RoomKeeperService(
      */
     fun joinExistingRoom(code: String, user: User): Boolean {
         if (!rooms.containsKey(code)) {
-            throw Exception("Attempted to leave a room that doesn't exist...")
+            throw RKSException(RKSErrorCodes.ROOM_DOES_NOT_EXIST.code, "The room $code doesn't exist")
         }
         // The room EXISTS
         val room = rooms[code]!!
 
         if (room.users.map { it.id }.contains(user.id)) {
-            throw Exception("Attempted to join a room the user is already in...")
+            throw RKSException(RKSErrorCodes.USER_ALREADY_IN_ROOM.code, "Attempted to join a room the user already" +
+                    "belongs to")
         }
 
         if (room.users.size == maxUsersPerRoom) {

@@ -1,7 +1,6 @@
 package com.jocampo.heroes.medallion.booker.utils
 
 import com.jocampo.heroes.medallion.booker.entities.Hero
-import com.jocampo.heroes.medallion.booker.services.RoomKeeperService
 
 class TestUtils {
     companion object {

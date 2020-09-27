@@ -22,6 +22,7 @@ class WebSocketRPCService(
 
     private val logger: Logger = LoggerFactory.getLogger(WebSocketRPCService::class.java)
     private val sessionList = HashMap<WebSocketSession, User>()
+    // TODO: Keeping at 30s for now for testing purposes. Should be 300s
     private val MEDALLION_CD_MILLIS: Long = 30L * 1000 // 300 seconds in millis
 
     // Probably want to use actual UUIDS in the future
@@ -92,8 +93,7 @@ class WebSocketRPCService(
                 WebSocketEventTypes.LEAVE_ROOM.eventType -> {
                     if (!sessionList.containsKey(session)) {
                         logger.error("User doesn't have an existing session, which is required by this event type")
-                        emitGenericError(session)
-                        return
+                        throw RKSException(RKSErrorCodes.USER_NOT_IN_ROOM.code, "User is not in a room")
                     }
                     handleUserLeavingRoom(session, false)
                     // In the future, we might not want to tie leaving a room with having your session removed

@@ -45,7 +45,7 @@ class WebSocketRPCService(
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
         val json = objectMapper.readTree(message.payload)
         try {
-            when (json.get("type").asText()) {
+            when (json.get("msgType").asText()) {
                 WebSocketEventTypes.BOOK_ROOM.eventType -> {
                     if (sessionList.containsKey(session)) {
                         logger.error("User has already booked a room. Please leave the room before trying this" +
